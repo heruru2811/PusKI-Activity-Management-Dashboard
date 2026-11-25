@@ -1,0 +1,8 @@
+{
+  "name": "PusKI Activity Management Dashboard",
+  "description": "Aplikasi perencanaan dan pemantauan seluruh kegiatan Pusat Kelembagaan Internasional (PusKI), Kementerian Komunikasi dan Digital.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

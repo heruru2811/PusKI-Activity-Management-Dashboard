@@ -1,0 +1,414 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================
+    // Global Helpers
+    // =========================================================
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidDateStr(d) {
+      return d is string && d.size() == 10 && d.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'heruru2811@gmail.com';
+    }
+
+    function isProvisionedAdmin() {
+      return isVerifiedUser() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function hasUserDoc() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() ||
+        isProvisionedAdmin() ||
+        (isVerifiedUser() && hasUserDoc() && getUserDoc().role == 'admin');
+    }
+
+    function isPimpinan() {
+      return isVerifiedUser() && hasUserDoc() && getUserDoc().role == 'pimpinan';
+    }
+
+    function isPegawai() {
+      return isVerifiedUser() && hasUserDoc() && getUserDoc().role == 'pegawai';
+    }
+
+    function userTeamId() {
+      return getUserDoc().team_id;
+    }
+
+    // =========================================================
+    // Validation Blueprints
+    // =========================================================
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'nama', 'email', 'role', 'team_id', 'created_at', 'updated_at']) &&
+        data.keys().hasOnly(['uid', 'nama', 'email', 'foto_profil', 'role', 'team_id', 'jabatan', 'role_selected', 'created_at', 'updated_at']) &&
+        isValidId(data.uid) &&
+        data.nama is string && data.nama.size() >= 1 && data.nama.size() <= 150 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 200 &&
+        (!('foto_profil' in data) || (data.foto_profil is string && data.foto_profil.size() <= 1000)) &&
+        data.role in ['admin', 'pimpinan', 'pegawai'] &&
+        isValidId(data.team_id) && data.team_id.size() <= 64 &&
+        (!('jabatan' in data) || (data.jabatan is string && data.jabatan.size() <= 120)) &&
+        (!('role_selected' in data) || data.role_selected is bool) &&
+        data.created_at is timestamp &&
+        data.updated_at is timestamp;
+    }
+
+    function isValidTeam(data) {
+      return data.keys().hasAll(['nama_tim', 'deskripsi', 'daftar_anggota', 'created_at', 'updated_at']) &&
+        data.keys().hasOnly(['nama_tim', 'deskripsi', 'daftar_anggota', 'created_at', 'updated_at']) &&
+        data.nama_tim is string && data.nama_tim.size() >= 1 && data.nama_tim.size() <= 120 &&
+        data.deskripsi is string && data.deskripsi.size() <= 500 &&
+        data.daftar_anggota is list && data.daftar_anggota.size() <= 50 &&
+        (data.daftar_anggota.size() == 0 || data.daftar_anggota[0] is string) &&
+        data.created_at is timestamp &&
+        data.updated_at is timestamp;
+    }
+
+    function isValidActivity(data) {
+      return data.keys().hasAll([
+          'nama_kegiatan', 'kategori', 'deskripsi', 'team_id', 'created_by', 'pic',
+          'tanggal_mulai_persiapan', 'tanggal_pelaksanaan', 'tanggal_pengingat',
+          'target_output', 'hasil_kegiatan', 'status', 'persentase_progres',
+          'created_at', 'updated_at'
+        ]) &&
+        data.keys().hasOnly([
+          'nama_kegiatan', 'kategori', 'deskripsi', 'team_id', 'created_by', 'pic',
+          'tanggal_mulai_persiapan', 'tanggal_pelaksanaan', 'tanggal_pengingat',
+          'target_output', 'hasil_kegiatan', 'status', 'persentase_progres',
+          'demo_id', 'kategori_kegiatan', 'tim_pelaksana', 'catatan_deskripsi', 'progress', 'is_demo',
+          'created_at', 'updated_at'
+        ]) &&
+        data.nama_kegiatan is string && data.nama_kegiatan.size() >= 1 && data.nama_kegiatan.size() <= 300 &&
+        data.kategori in [
+          'Sidang dan Forum Internasional',
+          'Rapat Koordinasi',
+          'Rapat Persiapan',
+          'Kerja Sama Bilateral',
+          'Kerja Sama Multilateral',
+          'Kunjungan Delegasi',
+          'Pelatihan dan Capacity Building',
+          'Lainnya'
+        ] &&
+        data.deskripsi is string && data.deskripsi.size() <= 2000 &&
+        isValidId(data.team_id) && data.team_id.size() <= 64 &&
+        isValidId(data.created_by) &&
+        data.pic is string && data.pic.size() >= 1 && data.pic.size() <= 150 &&
+        isValidDateStr(data.tanggal_mulai_persiapan) &&
+        isValidDateStr(data.tanggal_pelaksanaan) &&
+        isValidDateStr(data.tanggal_pengingat) &&
+        data.target_output is string && data.target_output.size() >= 1 && data.target_output.size() <= 500 &&
+        data.hasil_kegiatan is string && data.hasil_kegiatan.size() <= 1000 &&
+        data.status in ['Belum Dimulai', 'Sedang Berjalan', 'Selesai', 'Terlambat', 'Dibatalkan'] &&
+        data.persentase_progres is number && data.persentase_progres >= 0 && data.persentase_progres <= 100 &&
+        (!('demo_id' in data) || (isValidId(data.demo_id) && data.demo_id.size() <= 64)) &&
+        (!('kategori_kegiatan' in data) || (data.kategori_kegiatan is string && data.kategori_kegiatan.size() >= 1 && data.kategori_kegiatan.size() <= 120)) &&
+        (!('tim_pelaksana' in data) || (data.tim_pelaksana is string && data.tim_pelaksana.size() >= 1 && data.tim_pelaksana.size() <= 120)) &&
+        (!('catatan_deskripsi' in data) || (data.catatan_deskripsi is string && data.catatan_deskripsi.size() <= 2000)) &&
+        (!('progress' in data) || (data.progress is number && data.progress >= 0 && data.progress <= 100)) &&
+        (!('is_demo' in data) || data.is_demo is bool) &&
+        data.created_at is timestamp &&
+        data.updated_at is timestamp;
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll([
+          'nama_tugas', 'pic', 'deadline', 'target_output', 'status', 'progres',
+          'created_at', 'updated_at'
+        ]) &&
+        data.keys().hasOnly([
+          'nama_tugas', 'pic', 'deadline', 'target_output', 'status', 'progres',
+          'created_at', 'updated_at'
+        ]) &&
+        data.nama_tugas is string && data.nama_tugas.size() >= 1 && data.nama_tugas.size() <= 250 &&
+        data.pic is string && data.pic.size() >= 1 && data.pic.size() <= 150 &&
+        isValidDateStr(data.deadline) &&
+        data.target_output is string && data.target_output.size() >= 1 && data.target_output.size() <= 400 &&
+        data.status in ['Belum Dimulai', 'Sedang Berjalan', 'Selesai', 'Terlambat', 'Dibatalkan'] &&
+        data.progres is number && data.progres >= 0 && data.progres <= 100 &&
+        data.created_at is timestamp &&
+        data.updated_at is timestamp;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll([
+          'activity_id', 'judul', 'pesan', 'tanggal_pengingat', 'dibaca',
+          'created_at', 'updated_at'
+        ]) &&
+        data.keys().hasOnly([
+          'activity_id', 'judul', 'pesan', 'tanggal_pengingat', 'dibaca',
+          'created_at', 'updated_at'
+        ]) &&
+        isValidId(data.activity_id) &&
+        data.judul is string && data.judul.size() >= 1 && data.judul.size() <= 200 &&
+        data.pesan is string && data.pesan.size() >= 1 && data.pesan.size() <= 500 &&
+        isValidDateStr(data.tanggal_pengingat) &&
+        data.dibaca is bool &&
+        data.created_at is timestamp &&
+        data.updated_at is timestamp;
+    }
+
+    // =========================================================
+    // Collection Rules
+    // =========================================================
+
+    // Read-only admin provisioning registry (managed out-of-band by system authority)
+    match /admins/{adminId} {
+      allow get: if isVerifiedUser() && isValidId(adminId) && (isOwner(adminId) || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /users/{userId} {
+      allow get: if isVerifiedUser() && isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == userId &&
+        incoming().created_at == request.time &&
+        incoming().updated_at == request.time &&
+        (
+          isAdmin() ||
+          (
+            isOwner(userId) &&
+            incoming().role_selected == true &&
+            incoming().role in ['pegawai', 'pimpinan'] &&
+            (!('email' in request.auth.token) || incoming().email == request.auth.token.email) &&
+            (
+              incoming().team_id in ['tim_1', 'tim_2', 'tim_3'] ||
+              exists(/databases/$(database)/documents/teams/$(incoming().team_id))
+            )
+          )
+        );
+
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().created_at == existing().created_at &&
+        incoming().updated_at == request.time &&
+        (
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['nama', 'email', 'foto_profil', 'role', 'team_id', 'jabatan', 'role_selected', 'updated_at'])
+          ) ||
+          (
+            isOwner(userId) &&
+            (!('role_selected' in existing()) || existing().role_selected == false) &&
+            existing().role != 'admin' &&
+            incoming().role in ['pegawai', 'pimpinan'] &&
+            incoming().role_selected == true &&
+            (!('email' in request.auth.token) || incoming().email == request.auth.token.email) &&
+            (
+              incoming().team_id in ['tim_1', 'tim_2', 'tim_3'] ||
+              exists(/databases/$(database)/documents/teams/$(incoming().team_id))
+            ) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['nama', 'email', 'foto_profil', 'role', 'team_id', 'jabatan', 'role_selected', 'updated_at'])
+          ) ||
+          (
+            isOwner(userId) &&
+            ('role_selected' in existing()) &&
+            existing().role_selected == true &&
+            incoming().role == existing().role &&
+            incoming().team_id == existing().team_id &&
+            incoming().role_selected == true &&
+            (!('email' in request.auth.token) || incoming().email == request.auth.token.email) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['nama', 'email', 'foto_profil', 'updated_at'])
+          )
+        );
+
+      allow delete: if isAdmin() && isValidId(userId) && userId != request.auth.uid;
+
+      match /notifications/{notificationId} {
+        allow get: if isVerifiedUser() && isValidId(userId) && isValidId(notificationId) && isOwner(userId);
+        allow list: if isVerifiedUser() && isValidId(userId) && isOwner(userId);
+
+        allow create: if isVerifiedUser() &&
+          isValidId(userId) &&
+          isValidId(notificationId) &&
+          isOwner(userId) &&
+          isValidNotification(incoming()) &&
+          incoming().created_at == request.time &&
+          incoming().updated_at == request.time &&
+          exists(/databases/$(database)/documents/activities/$(incoming().activity_id));
+
+        allow update: if isVerifiedUser() &&
+          isValidId(userId) &&
+          isValidId(notificationId) &&
+          isOwner(userId) &&
+          isValidNotification(incoming()) &&
+          incoming().activity_id == existing().activity_id &&
+          incoming().created_at == existing().created_at &&
+          incoming().updated_at == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['judul', 'pesan', 'tanggal_pengingat', 'dibaca', 'updated_at']);
+
+        allow delete: if isVerifiedUser() && isValidId(userId) && isValidId(notificationId) && isOwner(userId);
+      }
+    }
+
+    match /teams/{teamId} {
+      allow get: if isVerifiedUser() && isValidId(teamId);
+      allow list: if isVerifiedUser();
+
+      allow create: if isValidId(teamId) &&
+        isValidTeam(incoming()) &&
+        incoming().created_at == request.time &&
+        incoming().updated_at == request.time &&
+        (
+          isAdmin() ||
+          (
+            isVerifiedUser() &&
+            teamId in ['tim_1', 'tim_2', 'tim_3'] &&
+            !exists(/databases/$(database)/documents/teams/$(teamId))
+          )
+        );
+
+      allow update: if isAdmin() &&
+        isValidId(teamId) &&
+        isValidTeam(incoming()) &&
+        incoming().created_at == existing().created_at &&
+        incoming().updated_at == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['nama_tim', 'deskripsi', 'daftar_anggota', 'updated_at']);
+
+      allow delete: if isAdmin() && isValidId(teamId);
+    }
+
+    match /activities/{activityId} {
+      function canAccessParent() {
+        return exists(/databases/$(database)/documents/activities/$(activityId)) && (
+          isAdmin() ||
+          isPimpinan() ||
+          (isPegawai() && get(/databases/$(database)/documents/activities/$(activityId)).data.team_id == userTeamId())
+        );
+      }
+
+      function canManageParent() {
+        return exists(/databases/$(database)/documents/activities/$(activityId)) && (
+          isAdmin() ||
+          (isPegawai() && get(/databases/$(database)/documents/activities/$(activityId)).data.team_id == userTeamId())
+        );
+      }
+
+      allow get: if isVerifiedUser() &&
+        isValidId(activityId) &&
+        (isAdmin() || isPimpinan() || (isPegawai() && existing().team_id == userTeamId()));
+
+      allow list: if isVerifiedUser() &&
+        (isAdmin() || isPimpinan() || (isPegawai() && existing().team_id == userTeamId()));
+
+      allow create: if isVerifiedUser() &&
+        isValidId(activityId) &&
+        isValidActivity(incoming()) &&
+        incoming().created_by == request.auth.uid &&
+        incoming().created_at == request.time &&
+        incoming().updated_at == request.time &&
+        exists(/databases/$(database)/documents/teams/$(incoming().team_id)) &&
+        (isAdmin() || (isPegawai() && incoming().team_id == userTeamId()));
+
+      allow update: if isVerifiedUser() &&
+        isValidId(activityId) &&
+        isValidActivity(incoming()) &&
+        incoming().created_by == existing().created_by &&
+        incoming().created_at == existing().created_at &&
+        incoming().updated_at == request.time &&
+        (
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'nama_kegiatan', 'kategori', 'deskripsi', 'team_id', 'pic',
+              'tanggal_mulai_persiapan', 'tanggal_pelaksanaan', 'tanggal_pengingat',
+              'target_output', 'hasil_kegiatan', 'status', 'persentase_progres', 'updated_at'
+            ])
+          ) ||
+          (
+            isPegawai() &&
+            existing().team_id == userTeamId() &&
+            incoming().team_id == existing().team_id &&
+            existing().status != 'Dibatalkan' &&
+            existing().status != 'Selesai' &&
+            (
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'nama_kegiatan', 'kategori', 'deskripsi', 'pic',
+                'tanggal_mulai_persiapan', 'tanggal_pelaksanaan', 'tanggal_pengingat',
+                'target_output', 'updated_at'
+              ]) ||
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'status', 'persentase_progres', 'hasil_kegiatan', 'updated_at'
+              ])
+            )
+          )
+        );
+
+      allow delete: if isVerifiedUser() &&
+        isValidId(activityId) &&
+        (isAdmin() || (isPegawai() && existing().team_id == userTeamId()));
+
+      match /tasks/{taskId} {
+        allow get: if isVerifiedUser() && isValidId(activityId) && isValidId(taskId) && canAccessParent();
+        allow list: if isVerifiedUser() && isValidId(activityId) && canAccessParent();
+
+        allow create: if isVerifiedUser() &&
+          isValidId(activityId) &&
+          isValidId(taskId) &&
+          isValidTask(incoming()) &&
+          incoming().created_at == request.time &&
+          incoming().updated_at == request.time &&
+          canManageParent();
+
+        allow update: if isVerifiedUser() &&
+          isValidId(activityId) &&
+          isValidId(taskId) &&
+          isValidTask(incoming()) &&
+          incoming().created_at == existing().created_at &&
+          incoming().updated_at == request.time &&
+          canManageParent() &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'nama_tugas', 'pic', 'deadline', 'target_output', 'status', 'progres', 'updated_at'
+          ]);
+
+        allow delete: if isVerifiedUser() && isValidId(activityId) && isValidId(taskId) && canManageParent();
+      }
+    }
+  }
+}

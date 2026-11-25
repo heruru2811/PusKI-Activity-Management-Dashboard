@@ -1,0 +1,388 @@
+{
+  "entities": {
+    "UserProfileDoc": {
+      "title": "UserProfileDoc",
+      "description": "Profil pengguna PusKI terhubung dengan UID Firebase Authentication.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "UID Firebase Authentication pengguna.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "nama": {
+          "type": "string",
+          "description": "Nama lengkap pengguna.",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "email": {
+          "type": "string",
+          "description": "Alamat email akun Google pengguna.",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "foto_profil": {
+          "type": "string",
+          "description": "URL foto profil pengguna.",
+          "maxLength": 1000
+        },
+        "role": {
+          "type": "string",
+          "description": "Peran akses pengguna di PusKI.",
+          "enum": ["admin", "pimpinan", "pegawai"]
+        },
+        "team_id": {
+          "type": "string",
+          "description": "ID tim tempat pengguna bertugas.",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "jabatan": {
+          "type": "string",
+          "description": "Jabatan fungsional atau struktural pengguna.",
+          "maxLength": 120
+        },
+        "role_selected": {
+          "type": "boolean",
+          "description": "Menandakan apakah pengguna sudah memilih role secara eksplisit saat login."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu pembuatan dokumen di server."
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu pembaruan terakhir dokumen di server."
+        }
+      },
+      "required": ["uid", "nama", "email", "role", "team_id", "created_at", "updated_at"]
+    },
+    "TeamDoc": {
+      "title": "TeamDoc",
+      "description": "Data tim kerja di lingkungan Pusat Kelembagaan Internasional.",
+      "type": "object",
+      "properties": {
+        "nama_tim": {
+          "type": "string",
+          "description": "Nama resmi tim PusKI.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "deskripsi": {
+          "type": "string",
+          "description": "Deskripsi tugas dan ruang lingkup tim.",
+          "maxLength": 500
+        },
+        "daftar_anggota": {
+          "type": "array",
+          "description": "Daftar nama anggota tim (maksimal 50 anggota)."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["nama_tim", "deskripsi", "daftar_anggota", "created_at", "updated_at"]
+    },
+    "ActivityDoc": {
+      "title": "ActivityDoc",
+      "description": "Rencana dan pelaksanaan kegiatan resmi PusKI.",
+      "type": "object",
+      "properties": {
+        "nama_kegiatan": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "kategori": {
+          "type": "string",
+          "enum": [
+            "Sidang dan Forum Internasional",
+            "Rapat Koordinasi",
+            "Rapat Persiapan",
+            "Kerja Sama Bilateral",
+            "Kerja Sama Multilateral",
+            "Kunjungan Delegasi",
+            "Pelatihan dan Capacity Building",
+            "Lainnya"
+          ]
+        },
+        "deskripsi": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "team_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "created_by": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "pic": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "tanggal_mulai_persiapan": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "tanggal_pelaksanaan": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "tanggal_pengingat": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "target_output": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "hasil_kegiatan": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Belum Dimulai", "Sedang Berjalan", "Selesai", "Terlambat", "Dibatalkan"]
+        },
+        "persentase_progres": {
+          "type": "number"
+        },
+        "demo_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "kategori_kegiatan": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "tim_pelaksana": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "catatan_deskripsi": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "progress": {
+          "type": "number"
+        },
+        "is_demo": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "nama_kegiatan",
+        "kategori",
+        "deskripsi",
+        "team_id",
+        "created_by",
+        "pic",
+        "tanggal_mulai_persiapan",
+        "tanggal_pelaksanaan",
+        "tanggal_pengingat",
+        "target_output",
+        "hasil_kegiatan",
+        "status",
+        "persentase_progres",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "TaskDoc": {
+      "title": "TaskDoc",
+      "description": "Tahapan persiapan dan pekerjaan pendukung di bawah dokumen kegiatan.",
+      "type": "object",
+      "properties": {
+        "nama_tugas": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 250
+        },
+        "pic": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "deadline": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "target_output": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Belum Dimulai", "Sedang Berjalan", "Selesai", "Terlambat", "Dibatalkan"]
+        },
+        "progres": {
+          "type": "number"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "nama_tugas",
+        "pic",
+        "deadline",
+        "target_output",
+        "status",
+        "progres",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "NotificationDoc": {
+      "title": "NotificationDoc",
+      "description": "Notifikasi pengingat kegiatan untuk pengguna tertentu berdasarkan UID.",
+      "type": "object",
+      "properties": {
+        "activity_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "judul": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "pesan": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "tanggal_pengingat": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "dibaca": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "activity_id",
+        "judul",
+        "pesan",
+        "tanggal_pengingat",
+        "dibaca",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "AdminProvisionDoc": {
+      "title": "AdminProvisionDoc",
+      "description": "Daftar UID pengguna yang ditetapkan sebagai Admin PusKI melalui provisioning otoritas sistem.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "UID Firebase Authentication pengguna Admin.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "description": "Email akun Admin yang terotorisasi.",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "granted_by": {
+          "type": "string",
+          "description": "Identitas otoritas yang menetapkan hak Admin.",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "granted_by", "created_at"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminProvisionDoc" },
+      "description": "Dokumen provisioning Admin yang dikelola secara terotorisasi (read-only bagi klien)."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfileDoc" },
+      "description": "Profil pengguna PusKI yang dipetakan berdasarkan UID Firebase Auth."
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/NotificationDoc" },
+      "description": "Sub-koleksi notifikasi pengingat kegiatan milik masing-masing pengguna."
+    },
+    "/teams/{teamId}": {
+      "schema": { "$ref": "#/entities/TeamDoc" },
+      "description": "Daftar tim pelaksana di lingkungan PusKI beserta deskripsi dan anggotanya."
+    },
+    "/activities/{activityId}": {
+      "schema": { "$ref": "#/entities/ActivityDoc" },
+      "description": "Data kegiatan resmi PusKI yang diakses bersama sesuai role dan team_id."
+    },
+    "/activities/{activityId}/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/TaskDoc" },
+      "description": "Sub-koleksi tahapan persiapan dan tugas pendukung untuk setiap kegiatan."
+    }
+  }
+}
